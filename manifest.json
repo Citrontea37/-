@@ -1,0 +1,16 @@
+{
+  "name": "항생제 용량 추천 도구 VER 1.0",
+  "short_name": "항생제계산기",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#eaf1f8",
+  "theme_color": "#336699",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

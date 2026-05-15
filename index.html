@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#336699">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>항생제 용량 추천 도구 VER 1.0 (모바일 지원)</title>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
+    <style>
+        :root {
+            --primary-bg: #eaf1f8;
+            --container-bg: #ffffff;
+            --accent-blue: #336699;
+            --accent-light: #e0f7fa;
+            --border-color: #cfd8dc;
+            --text-main: #2c3e50;
+            --warning-bg: #fffbe6;
+            --warning-border: #ffc107;
+            --result-bg: #ecf9ff;
+            --result-border: #00bcd4;
+        }
+
+        body { font-family: 'Pretendard', sans-serif; font-size: 13px; background: var(--primary-bg); margin: 0; padding: 15px; color: var(--text-main); }
+        .container { max-width: 800px; margin: 0 auto; background: var(--container-bg); border-radius: 12px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        h1 { text-align: center; color: var(--accent-blue); margin-bottom: 5px; font-weight: 800; font-size: 1.4rem; }
+        .version-tag { text-align: center; font-size: 11px; color: #78909c; margin-bottom: 20px; }
+        .notice-banner { background-color: #f1f4f9; border-left: 4px solid var(--accent-blue); padding: 12px; margin-bottom: 20px; border-radius: 6px; font-size: 12px; line-height: 1.4; }
+        
+        /* 기본 PC 레이아웃 (2단 그리드) */
+        .input-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 5px; font-weight: 600; color: #455a64; font-size: 12px; }
+        input, select { padding: 10px 8px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline-color: var(--accent-blue); box-sizing: border-box; width: 100%; }
+        
+        #drug-input { 
+            background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="gray" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 12px;
+            padding-right: 30px;
+        }
+
+        .button-group { display: flex; gap: 8px; margin-bottom: 15px; }
+        button { flex: 1; background: linear-gradient(135deg, #aabbee, #6a85c1); color: white; border: none; padding: 14px; font-size: 14px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+        #result-area { margin-top: 15px; display: none; }
+        .card { border-radius: 10px; padding: 15px; margin-bottom: 10px; line-height: 1.5; white-space: pre-line; word-break: keep-all;}
+        .bmi-card { background: var(--warning-bg); border: 1.5px solid var(--warning-border); font-size: 12.5px; }
+        .dose-card { background: var(--result-bg); border: 1.5px solid var(--result-border); font-weight: 500; font-size: 13px; }
+        .comment-card { background: #f8f9fa; border: 1.5px solid #cfd8dc; font-size: 12px; color: #546e7a; }
+        .label-tag { display: inline-block; padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 6px; }
+        .tag-bmi { background: #ffecb3; color: #856404; }
+        .tag-dose { background: #b2ebf2; color: #006064; }
+        .tag-cmt { background: #eceff1; color: #455a64; }
+        .wt-highlight { color: #d32f2f; font-weight: bold; }
+
+        /* 모바일 최적화를 위한 미디어 쿼리 (화면 너비 600px 이하일 때 적용) */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            h1 { font-size: 1.2rem; }
+            
+            /* 입력창을 1열로 변경하여 터치와 시인성을 높임 */
+            .input-grid {
+                grid-template-columns: 1fr; 
+                gap: 15px;
+            }
+            
+            /* 모바일에서 버튼 터치 영역 확보 */
+            input, select {
+                font-size: 15px;
+                padding: 12px 10px;
+            }
+            button {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>💊 항생제 용량 추천 도구</h1>
+    <div class="version-tag">분당서울대학교병원 항생제관리팀 핸드북 Ver.3 (2024.09) 및 Uptodate</div>
+    
+    <div class="notice-banner">
+        <strong>💡 오류나 건의사항은 김다혜tr에게 언제든지 피드백 주세요!</strong> 
+    </div>
+
+    <div class="input-grid">
+        <div class="form-group">
+            <label>대상 약물 검색 및 선택</label>
+            <input type="text" id="drug-input" list="drug-options" placeholder="약물 검색 또는 선택" autocomplete="off">
+            <datalist id="drug-options">
+                <option value="Amikacin">
+                <option value="Amoxicillin PO">
+                <option value="Amoxicillin/Clavulanate (7:1)">
+                <option value="Ampicillin">
+                <option value="Ampicillin/Sulbactam">
+                <option value="Azithromycin">
+                <option value="Aztreonam">
+                <option value="Cefadroxil PO">
+                <option value="Cefazolin">
+                <option value="Cefditoren PO">
+                <option value="Cefepime">
+                <option value="Cefixime PO">
+                <option value="Cefotaxime">
+                <option value="Cefpodoxime PO">
+                <option value="Ceftazidime">
+                <option value="Ceftazidime/avibactam (Zavicefta)">
+                <option value="Ceftizoxime">
+                <option value="Ceftolozane/tazobactam (Zerbaxa)">
+                <option value="Ceftriaxone">
+                <option value="Ciprofloxacin IV">
+                <option value="Ciprofloxacin PO">
+                <option value="Clindamycin IV">
+                <option value="Colistin">
+                <option value="Daptomycin">
+                <option value="Ertapenem">
+                <option value="Gentamicin">
+                <option value="Imipenem/Cilastatin">
+                <option value="Levofloxacin">
+                <option value="Linezolid">
+                <option value="Meropenem">
+                <option value="Metronidazole">
+                <option value="Methylolcefalexin">
+                <option value="Moxifloxacin">
+                <option value="Nafcillin">
+                <option value="Piperacillin/Tazobactam">
+                <option value="Sulfamethoxazole/Trimethoprim">
+                <option value="Teicoplanin">
+                <option value="Tigecycline">
+                <option value="Vancomycin IV">
+                <option value="Vancomycin PO">
+                <option value="Acyclovir IV">
+                <option value="Acyclovir PO">
+                <option value="Amphotericin B liposomal (Ambisome)">
+                <option value="Amphotericin B (Fungizone)">
+                <option value="Anidulafungin">
+                <option value="Caspofungin">
+                <option value="Cidofovir">
+                <option value="Fluconazole IV">
+                <option value="Fluconazole PO">
+                <option value="Ganciclovir">
+                <option value="Letermovir">
+                <option value="Oseltamivir PO">
+                <option value="Peramivir IV">
+                <option value="Posaconazole">
+                <option value="Valacyclovir PO">
+                <option value="Valganciclovir PO">
+                <option value="Voriconazole IV">
+                <option value="Voriconazole PO">
+            </datalist>
+        </div>
+        <div class="form-group">
+            <label>성별</label>
+            <select id="gender"><option value="male">남성</option><option value="female">여성</option></select>
+        </div>
+        <div class="form-group">
+            <label>신장 (cm)</label>
+            <input type="number" id="height" placeholder="예: 170 (선택)" step="0.1">
+        </div>
+        <div class="form-group"><label>체중 (kg)</label><input type="number" id="weight" placeholder="예: 70" step="0.1"></div>
+        <div class="form-group"><label>eGFR (mL/min) *CG 기준*</label><input type="number" id="egfr" placeholder="예: 60"></div>
+        <div class="form-group">
+            <label>투석 여부</label>
+            <select id="dialysis">
+                <option value="none">해당 없음</option>
+                <option value="IHD">간헐적 투석 (IHD)</option>
+                <option value="CVVHDF">지속적 투석 (CVVHDF)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="button-group">
+        <button onclick="run()">🧪 추천 용량 확인</button>
+        <button onclick="resetAll()" style="background: #eceff1; color: #2c3e50; flex: 0.4;">🔄 초기화</button>
+    </div>
+
+    <div id="result-area">
+        <div id="bmi-box" class="card bmi-card"></div>
+        <div id="dose-box" class="card dose-card"></div>
+        <div id="comment-box" class="card comment-card"></div>
+    </div>
+</div>
+
+<script>
+// DB 객체는 원본과 완전히 동일합니다.
+const DB = {
+    amikacin: { name: "Amikacin", ranges: [{min:40, dose:"7.5mg/kg IV q 12h"}, {min:20, max:40, dose:"7.5mg/kg IV q 24h"}, {min:0, max:20, dose:"LD 7.5mg/kg 1회 후 TDM"}], IHD: "7.5mg/kg 투석 후 투여", CVVHDF: "LD 10mg/kg, MD 7.5mg/kg q 24h", cmt: "1. TDM 채혈 2회: 투여직전, 투여완료 30분 후 (신부전 환자는 60분 후)\n2. 적응증별 target peak\n- Conventional therapy: 25-35 mcg/mL\n- 다제내성결핵 1) 매일 투여: 35-45 mcg/mL 2) 주3회 투여: ≧65 mcg/mL\n- NTM 1) 매일 투여: 25-35 mcg/mL 2) 주3회 투여: 65-80 mcg/mL" },
+    amoxicillin: { name: "Amoxicillin PO", ranges: [{min:30, dose:"1g PO q 12h"}, {min:10, max:30, dose:"500mg PO q 12h"}, {min:0, max:10, dose:"500mg PO q 24h"}], IHD: "500mg PO q 24h", cmt: "" },
+    amoxu_clav: { name: "Amoxicillin/Clavulanate (7:1)", ranges: [{min:30, dose:"(7:1 tablet) 2 tab PO q 12h"}, {min:10, max:30, dose:"(7:1 tablet) 1 tab q 12h"}, {min:0, max:10, dose:"(7:1 tablet) 1 tab q 24h"}], IHD: "1 tab PO q 24h", cmt: "1. 500mg tab: Amoxicillin 437.5mg+Clavulanate 62.5mg (7:1)\n2. 7:1, 14:1 시럽제형 있음" },
+    ampicillin: { name: "Ampicillin", ranges: [{min:50, dose:"[UTI or Uncomplicated] 2g IV q 6h\n[Endocarditis or PJI] 2g IV q 4h"}, {min:30, max:50, dose:"[UTI or Uncomplicated] 2g IV q 8h\n[Endocarditis or PJI] 2g IV q 6h"}, {min:15, max:30, dose:"[UTI or Uncomplicated] 2g IV q 12h\n[Endocarditis or PJI] 2g IV q 8h"}, {min:0, max:15, dose:"[UTI or Uncomplicated] 2g IV q 24h\n[Endocarditis or PJI] 2g IV q 12h"}], IHD: "[UTI or Uncomplicated] 2g IV q 24h 투석 후 투여\n[Endocarditis or PJI] 2g IV q 12h 투석 후 투여", CVVHDF: "[UTI or Uncomplicated] 2g IV q 8h\n[Endocarditis or PJI] 2g IV q 6h", cmt: "" },
+    ampisul: { name: "Ampicillin/Sulbactam", ranges: [{min:30, dose:"3g IV q 6h"}, {min:15, max:30, dose:"3g IV q 12h"}, {min:0, max:15, dose:"3g IV q 24h"}], IHD: "3g IV q 24h 투석 후 투여", CVVHDF: "3g IV q 6h", cmt: "다제내성 A. baumanii 중증감염: 9g q 8h over 4hr (경증 감염: 3g q 4h)" },
+    azithromycin: { name: "Azithromycin", ranges: [{min:0, dose:"500mg IV q 24h 3일간 투여"}], IHD: "500mg IV q 24h 3일간 투여", CVVHDF: "500mg IV q 24h 3일간 투여", cmt: "IV→PO 제형 전환시 1:1 용량 변경" },
+    aztreonam: { name: "Aztreonam", ranges: [{min:30, dose:"2g IV q 8h"}, {min:10, max:30, dose:"1g IV q 8h"}, {min:0, max:10, dose:"500mg IV q 8h"}], IHD: "LD 2g -> MD 500mg q 8h", CVVHDF: "2g IV q 12h", cmt: "" },
+    cefadroxil: { name: "Cefadroxil PO", ranges: [{min:40, dose:"500mg PO q 12h\n[Complicated] 1g PO q 12h"}, {min:20, max:40, dose:"500mg PO q 24h\n[Complicated] 500mg PO q 12h"}, {min:0, max:20, dose:"500mg PO q 48h\n[Complicated] 500mg PO q 24h"}], IHD: "LD: 1g 1회 투여, MD: 주 3회 투석 후 500mg 투여\n[Complicated] LD: 1g 1회 투여, MD: 주 3회 투석 후 1g 투여", cmt: "" },
+    cefazolin: { name: "Cefazolin", ranges: [{min:30, dose: "2g IV q 8h"}, {min:10, max:30, dose: "2g IV q 12h"}, {min:0, max:10, dose: "2g IV q 24h"}], IHD: "1. 1g IV q 24h\n2. 2. 3회 투석 후 2g or 3g IV (다음 투석 48시간 후: 2g, 다음 투석 72시간 후: 3g)", CVVHDF: "2g IV q 12h", cmt: "" },
+    cefditoren: { name: "Cefditoren PO", ranges: [{min:50, dose: "200mg PO q 12h\n[지역사회획득폐렴] 400mg PO q 12h"}, {min:30, max:50, dose:"200mg PO q 12h"}, {max:30, dose:"200mg PO q 24h"}], cmt: "" },
+    cefepime: { name: "Cefepime", ranges: [{min:60, dose:"2g IV q 8h"}, {min:30, max:60, dose:"2g IV q 12h"}, {min:10, max:30, dose:"1g IV q 12h"}, {min:0, max:10, dose:"1g IV q 24h"}], IHD: "1g IV q 24h", CVVHDF: "2g IV q 8h", cmt: "다제내성균 감염, 비만, ECMO, ARC: extended infusion 고려" },
+    cefixime: { name: "Cefixime PO", ranges: [{min:60, dose:"400mg PO q 24h or 200mg PO q 12h"}, {min:20, max:60, dose:"300mg PO q 24h (Ref. uptodate)"}, {min:0, max:20, dose:"200mg PO q 24h (Ref. uptodate)"}], IHD: "300mg PO q 24h (Ref. uptodate)", cmt: "" },
+    cefotaxime: { name: "Cefotaxime", ranges: [{min:50, dose:"2g q 8h\n[Bacterial meningitis/Necrotizing fasciitis] 2g IV q 6h"}, {min:10, max:50, dose:"2g q 12h (Ref. uptodate)\n[Bacterial meningitis/Necrotizing fasciitis] 2g IV q 8h (Ref. uptodate)"}, {min:0, max:10, dose:"2g q 24h (Ref. uptodate)\n[Bacterial meningitis/Necrotizing fasciitis] 2g IV q 12h (Ref. uptodate)"}], IHD: "2g q 24h 투석 후 투여 (Ref. uptodate)\n[Bacterial meningitis/Necrotizing fasciitis] 2g IV q 12h 투석 후 투여 (Ref. uptodate)", CVVHDF: "2g q 12h (Ref. uptodate)\n[Bacterial meningitis/Necrotizing fasciitis] 2g IV q 8h (Ref. uptodate)", cmt: "" },
+    cefpodoxime: { name: "Cefpodoxime PO", ranges: [{min:30, dose:"200mg PO q 12h"}, {min:0, max:30, dose:"200mg PO q 24h"}], IHD: "200mg PO q 24h 투석 후 투여", CVVHDF: "200mg PO q 12h (IV 제형이 선호됨)", cmt: "" },
+    ceftazidime: { name: "Ceftazidime", ranges: [{min:50, dose:"2g IV q 8h"}, {min:30, max:50, dose:"2g IV q 12h"}, {min:15, max:30, dose:"2g IV q 24h (Ref. uptodate)"}, {min:6, max:15, dose:"1g IV q 24h (Ref. uptodate)"}], IHD: "1g IV q 24h (Ref. uptodate)", CVVHDF: "2g q 12h", cmt: "" },
+    ceftazidime_avibactam: { name: "Ceftazidime/avibactam (Zavicefta)", ranges: [{min:50, dose:"2.5g IV q 8h"}, {min:30, max:50, dose:"1.25g IV q 8h"}, {min:15, max:30, dose:"0.94g IV q 12h"}, {min:5, max:15, dose:"0.94g IV q 24h"}, {min:0, max:5, dose:"0.94g IV q 48h"}], IHD: "0.94g IV q 24h 투석 후 투여", CVVHDF: "1.25g IV q 8h", cmt: "다제내성균 감염: extended infusion 고려" },
+    ceftizoxime: { name: "Ceftizoxime", ranges: [{min:80, dose:"2g IV q 8h"}, {min:50, max:80, dose:"1g IV q 8h"}, {min:5, max:50, dose:"1g IV q 12h"}, {min:0, max:5, dose:"500mg IV q 24h"}], IHD: "1g IV q 24h", CVVHDF: "2g q 12h", cmt: "" },
+    ceftolozane_tazobactam: { name: "Ceftolozane/tazobactam (Zerbaxa)", ranges: [{min: 50, dose: "[복강내감염, 요로감염] 1.5 g IV q 8h\n[녹농균, HAP, severe infection] 3 g IV q 8h"}, {min: 30, max: 50, dose: "초회 표준 용량 투여 후, 2일 후부터:\n[복강내감염, 요로감염] 750 mg IV q 8h\n[녹농균, HAP, severe infection] 1.5 g IV q 8h"}, {min: 15, max: 30, dose: "초회 표준 용량 투여 후, 2일 후부터:\n[복강내감염, 요로감염] 375 mg IV q 8h\n[녹농균, HAP, severe infection] 750 mg IV q 8h"}, {min: 0, max: 15, dose: "조절 근거 없음 (항생제관리팀 상의)"}], IHD: "[복강내감염, 요로감염] LD 750mg → MD 150mg IV q 8h\n[녹농균, HAP, severe infection] LD 2.25g → MD 450mg IV q 8h", CVVHDF: "[복강내감염, 요로감염] 750 mg IV q 8h\n[녹농균, HAP, severe infection] 1.5 g IV q 8h", cmt: "1. 다제내성균 감염, ARC 환자: Extended infusion 고려\n2. CrCl 15-50 구간은 투여 2일 후부터 감량 용량 적용" },
+    ceftriaxone: { name: "Ceftriaxone", ranges: [{min:0, dose:"[일반 감염] 2 g IV q 24h\n[수막염/심내막염] 2 g IV q 12h"}], IHD: "[일반 감염] 2 g IV q 24h\n[수막염/심내막염] 2 g IV q 12h", CVVHDF: "[일반 감염] 2 g IV q 24h\n[수막염/심내막염] 2 g IV q 12h", cmt: "" },
+    cipro_iv: { name: "Ciprofloxacin IV", ranges: [{min:50, dose:"400 mg IV q 12h\n[녹농균/중증 감염] 400 mg IV q 8h"}, {min:30, max:50, dose:"400 mg IV q 12h\n[녹농균/중증 감염] 400 mg IV q 12h"}, {min:0, max:30, dose:"400 mg IV q 24h"}], IHD: "400 mg IV q 24h", CVVHDF: "400 mg IV q 12h\n[녹농균/중증 감염] 400 mg IV q 8h", cmt: "1. IV 400mg = PO 500mg\n2. Uncomplicated UTI: 200mg IV q 12h" },
+    cipro_po: { name: "Ciprofloxacin PO", ranges: [{min: 50, dose: "500 mg PO q 12h\n[녹농균/중증 감염] 750 mg PO q 12h"}, {min: 30, max: 50, dose: "250 mg PO q 12h\n[녹농균/중증 감염] 500 mg PO q 12h (Ref. uptodate)"}, {min: 0, max: 30, dose: "500 mg PO q 24h"}], IHD: "250-500 mg PO q 24h", CVVHDF: "500 mg PO q 12h\n[녹농균/중증 감염] 750 mg PO q 12h", cmt: "1. 흡수 저하 주의: Al, Mg, Fe, Zn, Ca 등 양이온 제제 및 유제품 중단 or 2시간 이상 간격 권고\n2. Uncomplicated UTI: 250mg PO q 12h" },
+    clindamycin: { name: "Clindamycin IV", ranges: [{min: 0, dose: "600-900 mg IV q 8h"}], IHD: "600-900 mg IV q 8h", CVVHDF: "600-900 mg IV q 8h", cmt: "1. IV-PO 제형 전환: 1:1 용량 변경 가능\n2. 비만: 600mg q 6h 또는 900mg q 8h 고려\n3. 신기능에 따른 용량 조절 불필요" },
+    colistin: { name: "Colistin", ranges: [{min:70, dose:"2.5 mg/kg IV q 12h"}, {min:50, max:70, dose:"120 mg IV q 12h"}, {min:40, max:50, dose:"105 mg IV q 12h"}, {min:20, max:40, dose:"90 mg IV q 12h"}, {min:5, max:20, dose:"75 mg IV q 12h"}, {min:0, max:5, dose:"60 mg IV q 12h"}], IHD: "60 mg IV q 12h (투석시 투석 후 60+45mg 투여)", CVVHDF: "220 mg IV q 12h", cmt: "LD 300mg IV 1회 투여 12시간 후 신기능 유지용량 투여\n신독성 모니터링 필수" },
+    daptomycin: { name: "Daptomycin", ranges: [{min: 30, dose: "[Skin/soft tissue infection] 6 mg/kg IV q 24h\n[Bacteremia] 8 mg/kg IV q 24h\n[MRSA Endocarditis] 8-10 mg/kg IV q 24h\n[E.faecium infection] 10-12 mg/kg IV q 24h"}, {min: 0, max: 30, dose: "[Skin/soft tissue infection] 6 mg/kg IV q 48h\n[Bacteremia] 8 mg/kg IV q 48h\n[MRSA Endocarditis] 8-10 mg/kg IV q 48h\n[E.faecium infection] 10-12 mg/kg IV q 48h"}], IHD: "[Skin/soft tissue infection] 6 mg/kg IV q 48h (투석 후 투여)\n[Bacteremia] 8 mg/kg IV q 48h (투석 후 투여)\n[MRSA Endocarditis] 8-10 mg/kg IV q 48h (투석 후 투여)\n[E.faecium infection] 10-12 mg/kg IV q 48h (투석 후 투여)", CVVHDF: "[Skin/soft tissue infection] 6 mg/kg IV q 24h\n[Bacteremia/Endocarditis] 6-8 mg/kg IV q 24h\n[E.faecium infection] 8 mg/kg IV q 24h", cmt: "1. CPK(Creatinine Phospho-Kinase) 주 1회 모니터링 필수\n2. 폐렴(Pneumonia)에는 효과 없음 (Surfactant에 의해 불활성화)" },
+    ertapenem: { name: "Ertapenem", ranges: [{min: 30, dose: "1 g IV q 24h"}, {min: 0, max: 30, dose: "500 mg IV q 24h"}], IHD: "500 mg IV q 24h (투석 전 6시간 이내 투여 시 투석 후 150mg 추가)", CVVHDF: "1 g IV q 24h", cmt: "1. P.aeruginosa 효과 없음\n2. Valproate와 병용 시 valproate 농도 감소" },
+    gentamicin: { name: "Gentamicin", ranges: [{min:60, dose:"[일반 감염] 1.7 mg/kg IV q 8h\n[G(+) Synergy] 1 mg/kg IV q 8h"}, {min:40, max:60, dose:"[일반 감염] 1.7 mg/kg IV q 12h\n[G(+) Synergy] 1 mg/kg IV q 12h"}, {min:20, max:40, dose:"[일반 감염] 1.7 mg/kg IV q 24h\n[G(+) Synergy] 1 mg/kg IV q 24h"}, {min:0, max:20, dose:"1회 투여(1.7-2 mg/kg) 이후 TDM"}], IHD: "투석 후 투여 (LD 2mg/kg, MD 1.7mg/kg)", CVVHDF: "2.5 mg/kg IV q 24h", cmt: "TDM 필수 (Conventional 시 Peak 5-7mcg/mL)" },
+    imipenem: { name: "Imipenem/Cilastatin", ranges: [{min:60, dose:"500mg IV q 6h"}, {min:30, max:60, dose:"500mg IV q 8h"}, {min:15, max:30, dose:"500mg IV q 12h"}, {min:0, max:15, dose:"권고되지 않음"}], IHD: "500mg IV q 12h", CVVHDF: "1g 1회 투여 후 500mg IV q 6-8h", cmt: "다제내성균, ARC: extended infusion 고려" },
+    levofloxacin: { name: "Levofloxacin", ranges: [{min:50, dose: "750mg q 24h"}, {min:20, max:50, dose: "750mg q 48h"}, {min:0, max:20, dose: "LD 750mg → MD 500mg q 48h"}], IHD: "LD 750mg → 500mg q 48h (투석날은 투석 후 투여)", CVVHDF: "LD 750mg → 500mg q 48h (투석날은 투석 후 투여) (Ref. uptodate)", cmt: "1. IV → PO 제형 전환시 1:1 용량 변경\n2. PO 제형: Al, Mg, Fe, Zn, Ca 등의 양이온 제제와 병용시 흡수율저하 → 병용약물 중단 or 2시간 이상 간격 두고 복용" },
+    linezolid: { name: "Linezolid", ranges: [{min: 0, dose: "600mg q 12h"}], IHD: "600mg q 12h", CVVHDF: "600mg q 12h", cmt: "1. IV → PO 제형 전환시 1:1 용량 변경\n2. 다제내성결핵: 600mg qd" },
+    meropenem: { name: "Meropenem", ranges: [{min:50, dose:"[일반 감염] 1 g IV q 8h\n[중추신경계 감염] 2 g IV q 8h"}, {min:26, max:50, dose:"[일반 감염] 1 g IV q 12h\n[중추신경계 감염] 2 g IV q 12h"}, {min:10, max:25, dose:"[일반 감염] 500 mg IV q 12h\n[중추신경계 감염] 1 g IV q 12h"}, {min:0, max:10, dose:"[일반 감염] 500 mg IV q 24h\n[중추신경계 감염] 1 g IV q 24h"}], IHD: "[일반 감염] 500 mg IV q 24h 투석 후 투여\n[중추신경계 감염] 1 g IV q 24h 투석 후 투여", CVVHDF: "1 g 1회 투여 후 1g q 12h", cmt: "다제내성균, 비만, ECMO, ARC: Extended infusion 고려" },
+    metronidazole: { name: "Metronidazole", ranges: [{min: 0, dose: "500mg q 8h"}], IHD: "500mg q 8h", CVVHDF: "500mg q 8h", cmt: "1. IV → PO 제형 전환시 1:1 용량 변경\n2. CDI: 진료지침 > 감염내과지침 > CDI 참고\n3. 간기능 이상시 (Child-Pugh C): 50% 감량" },
+    methylolcefalexin: { name: "Methylolcefalexin PO", ranges: [{min: 30, dose: "1g PO q 8h"}, {min: 15, max: 30, dose: "1g PO q 12h (Ref. uptodate)"}, {max: 15, dose: "1g PO q 24h (Ref. uptodate)"}], IHD: "1g PO q 24h (Ref. uptodate) 투석 후 투여", cmt: "" },
+    moxifloxacin: { name: "Moxifloxacin", ranges: [{min: 0, dose: "400mg q 24h"}], IHD: "400mg q 24h", CVVHDF: "400mg q 24h", cmt: "" },
+    nafcillin: { name: "Nafcillin", ranges: [{min: 0, dose: "2g q 4h"}], IHD: "2g q 4h", CVVHDF: "2g q 4h", cmt: "" },
+    pipetazo: { name: "Piperacillin/Tazobactam", ranges: [{min: 40, dose: "4.5g q 6h"}, {min: 20, max: 40, dose: "3.375g q 6h or 4.5g q 8h"}, {min: 0, max: 20, dose: "2.25g q 6h or 4.5g q 12h"}], IHD: "2.25g q 8h or 4.5g q 12h", CVVHDF: "4.5g q 8h", cmt: "Traditional infusion method (over 30 minutes) (Ref. uptodate)\n1. Mild to moderate infection: 3.375 g every 6 hours.\n2. Severe infection: 4.5 g every 6 to 8 hours\n3. Pseudomonas aeruginosa infection: 4.5 g every 6 hours. Usual maximum dose: 18 g/day." },
+    sulfamethoxazole_trimethoprim: { name: "Sulfamethoxazole/Trimethoprim", ranges: [{min: 30, dose: "[PCP treatment] 15-20mg/kg/day(TMP) IV q 6-8h\n[PCP prophylaxis] 1 tab/amp q 24h\n[S.maltophilia infection] 10-15mg/kg/day(TMP) IV q 8-12h\n[UTI] 2 tab/amp q 12h"}, {min: 15, max: 30, dose: "[PCP treatment] 7.5-10mg/kg/day(TMP) IV q 6-8h\n[PCP prophylaxis] 0.5 tab/amp q 24h\n[S.maltophilia infection] 5-7.5mg/kg/day(TMP) IV q 8-12h\n[UTI] 1 tab/amp q 12h"}, {min: 0, max: 15, dose: "25-50% 감량"}], IHD: "25-50% 감량", CVVHDF: "[PCP treatment] 15-20mg/kg/day(TMP) IV q 6-8h\n[PCP prophylaxis] 1 tab/amp q 24h\n[S.maltophilia infection] 10-15mg/kg/day(TMP) IV q 8-12h\n[UTI] 2 tab/amp q 12h", cmt: "1. TMP 성분 기준 \n2. HypoNa/HyperK 주의" },
+    teicoplanin: { name: "Teicoplanin", ranges: [{min:80, dose: "[Bone and joint infection/Endocarditis] LD 12mg/kg q 12h 3-5회 → MD 12mg/kg q 24h\n[Pneumonia/SSTI/UTI] LD 6mg/kg q 12h 3회 → MD 12mg/kg q 24h"}, {min:30, max:80, dose: "D5부터 50% 감량 1일 1회 or 동일 용량으로 2일 1회)"}, {min:0, max:30, dose: "D5부터 1/3 감량 1일 1회 or 동일 용량으로 3일 1회"}], IHD: "D5부터 1/3 감량 1일 1회 or 동일 용량으로 3일 1회", CVVHDF: "[Bone and joint infection/Endocarditis] LD 12mg/kg q 12h 4회 → MD 6-12mg/kg q 24-48h\n[Pneumonia/SSTI/UTI] LD 12mg/kg q 12h 2회 → MD 3-6mg/kg q 24-48h", cmt: "상용량\n[Bone and joint infection/Endocarditis] LD 12mg/kg q 12h 3-5회 → MD 12mg/kg q 24h\n[Pneumonia/SSTI/UTI] LD 6mg/kg q 12h 3회 → MD 12mg/kg q 24h" },
+    tigecycline: { name: "Tigecycline", ranges: [{min: 0, dose: "LD: 100mg, MD: 50mg q 12h"}], IHD: "조절 불필요", CVVHDF: "조절 불필요", cmt: "Bloodstreatm infection에서 사용 금기" },
+    vancomycin: { name: "Vancomycin IV",         ranges: [
+            {min: 90, dose: "MRSA 감염증 의심시 LD (30mg/kg, max 2g) 1회 투약 고려, 100mg 단위로 내림 / 비만환자 LD 20-25mg/kg\nMD: 15mg/kg IV q 8h"},
+            {min: 50, max: 90, dose: "MRSA 감염증 의심시 LD (30mg/kg, max 2g) 1회 투약 고려, 100mg 단위로 내림 / 비만환자 LD 20-25mg/kg\nMD: 15mg/kg IV q 12h"},
+            {min: 15, max: 50, dose: "MRSA 감염증 의심시 LD (30mg/kg, max 2g) 1회 투약 고려, 100mg 단위로 내림 / 비만환자 LD 20-25mg/kg\nMD: 15mg/kg IV q 24h"},
+            {min: 0, max: 15, dose: "15mg/kg 1회 투여 후 24시간 뒤 TDM"}
+        ],
+        IHD: "LD 25mg/kg, MD 10mg/kg 투석 후 투여",
+        CVVHDF: "LD 25mg/kg, MD 10mg/kg IV q 12h",
+        cmt: "TDM 필수" },
+    vancomycin_po: { name: "Vancomycin PO", ranges: [{min: 0, dose: "[Mild to Severe C.difficile infection] 125mg PO qid * 10 days\n[Severe and complicated CDI] 500mg PO qid\n(진료지침 > 감염내과지침 > CDI 참고)"}], IHD: "[Mild to Severe C.difficile infection] 125mg PO qid * 10 days\n[Severe and complicated CDI] 500mg PO qid\n(진료지침 > 감염내과지침 > CDI 참고)", CVVHDF: "[Mild to Severe C.difficile infection] 125mg PO qid * 10 days\n[Severe and complicated CDI] 500mg PO qid\n(진료지침 > 감염내과지침 > CDI 참고)", cmt: "전신 흡수되지 않으므로, C.difficile infection 치료 위해 사용" },
+
+    acyclovir: { name: "Acyclovir IV", ranges: [{min:50, dose: "[HSV] 5mg/kg IV q 8h\n[HSV encephalitis/zoster] 10mg/kg IV q 8h"}, {min:25, max:50, dose: "[HSV] 5mg/kg IV q 12h\n[HSV encephalitis/zoster] 10mg/kg IV q 12h"}, {min:10, max:25, dose: "[HSV] 5mg/kg IV q 24h\n[HSV encephalitis/zoster] 10mg/kg IV q 24h"}, {min:0, max:10, dose: "[HSV] 2.5mg/kg IV q 24h\n[HSV encephalitis/zoster] 5mg/kg IV q 24h"}], IHD: "[HSV] 2.5mg/kg IV q 24h 투석 후 투여\n[HSV encephalitis/zoster] 5mg/kg IV q 24h 투석 후 투여", CVVHDF: "[HSV] 5mg/kg IV q 12h\n[HSV encephalitis/zoster] 10mg/kg IV q 12h", cmt: "1. 충분한 수분 보충 필요, IV hydration 추천\n2. 이식에서 예방 목적: [진료지침]-[감염내과지침] 참고" },
+    acyclovir_po: { name: "Acyclovir PO", ranges: [{min: 25, dose: "[HSV] 400mg PO q 8h\n[Zoster] 800mg PO 5회/일"}, {min: 10, max: 25, dose: "[HSV] 400mg PO q 8h\n[Zoster] 800mg PO q 8h"}, {min: 0, max: 10, dose: "[HSV] 200mg PO q 12h\n[Zoster] 400mg PO q 12h"}], IHD: "[HSV] 200mg PO q 12h\n[Zoster] LD: 400mg 1회 투여 → 200mg PO q 12h (투석하는 날은 400mg 추가 투여)", cmt: "1. 충분한 수분 보충 필요, IV hydration 추천\n2. 이식에서 예방 목적: [진료지침]-[감염내과지침] 참고" },
+    ambisome: { name: "Amphotericin B liposomal (Ambisome)", ranges: [{min: 0, dose: "[N.fever] 3mg/kg IV q 24h\n[Aspergillosis/Candidiasis] 3-5mg/kg IV q 24h (Ref. uptodate)\n[Cryptococcosis (meningitis)] 3-4 mg/kg IV q 24h (with flucytosine)"}], IHD: "[N.fever] 3mg/kg IV q 24h\n[Aspergillosis/Candidiasis] 3-5mg/kg IV q 24h\n[Cryptococcosis (meningitis)] 3-4 mg/kg IV q 24h (with flucytosine)", CVVHDF: "[N.fever] 3mg/kg IV q 24h\n[Aspergillosis/Candidiasis] 3-55mg/kg IV q 24h\n[Cryptococcosis (meningitis)] 3-4 mg/kg IV q 24h (with flucytosine)", cmt: "1. 그 외 적응증별 용량 uptodate 참고" },
+    fungizone: { name: "Amphotericin B (Fungizone)", ranges: [{min: 0, dose: "1mg/kg q 24h"}], IHD: "1mg/kg q 24h", CVVHDF: "1mg/kg q 24h", cmt: "" },
+    anidulafungin: { name: "Anidulafungin", ranges: [{min: 0, dose: "LD 200mg 1회 투여 → MD: LD 투여 24시간 후부터 100mg IV q 24h\n[Endocarditis] 200mg IV q 24h"}], IHD: "LD 200mg 1회 투여 → MD: LD 투여 24시간 후부터 100mg IV q 24h\n[Endocarditis] 200mg IV q 24h", CVVHDF: "LD 200mg 1회 투여 → MD: LD 투여 24시간 후부터 100mg IV q 24h\n[Endocarditis] 200mg IV q 24h", cmt: "" },
+    caspofungin: { name: "Caspofungin", ranges: [{min: 0, dose: "LD 70mg 1회 투여 → MD: LD 투여 24시간 후부터 50mg q 24h\n[Endocarditis] 150mg IV q 24h"}], IHD: "LD 70mg 1회 투여 → MD: LD 투여 24시간 후부터 50mg q 24h\n[Endocarditis] 150mg IV q 24h", CVVHDF: "LD 70mg 1회 투여 → MD: LD 투여 24시간 후부터 50mg q 24h\n[Endocarditis] 150mg IV q 24h", cmt: "1. Phenytoin, rifampin, carbamazepine, dexamethasone 등 (약물대사 유도제) 병용시: 유지용량 70mg IV q 24h 증량\n2. 중등도 간장애 환자(Child-Pugh score 7-9): 유지용량 35mg IV q 24h 감량" },
+    cidofovir: { name: "Cidofovir", ranges: [{min: 55, dose: "[Adenovirus] 5mg/kg 2주간 1주 1회 → 5mg/kg 2주 1회, probenecid 병용 투여 권고"}, {min: 0, max: 55, dose: "사용 금기, 필요시 항생제 관리팀 상의"}], IHD: "투석 후 5mg/kg 투여, probenecid 투여하지 않음", cmt: "1. 신장 보호 위한 probenecid(경구) 희귀의약품센터 별도 구매 필요\n2. 충분한 hydration 필요하며 세트오더 참고\n3. 그 외 적응증별 용량 uptodate 참고" },
+    fluconazole_iv: { name: "Fluconazole IV", ranges: [{min: 50, dose: "[Candidemia/CNS infection] LD 800 mg (=12mg/kg) q 24h 1일 → MD 400 mg (=6mg/kg) q 24h\nif fluconazole-susceptible Candida glabrata isolated, transition to 800 mg (or 12 mg/kg) q 24h\n[Esophageal, treatment] LD 400 mg (=6mg/kg) q 24h 1일 → MD 200-400 mg (=3-6mg/kg) q 24h\n[Esophageal, chronic suppression/Oropharyngeal] 100-200mg q 24h"}, {min: 0, max: 50, dose: "[Candidemia/CNS infection] LD 800 mg (=12mg/kg) q 24h 1일 → MD 200 mg (=3mg/kg) q 24h\nif fluconazole-susceptible Candida glabrata isolated, transition to 400 mg (or 6 mg/kg) q 24h\n[Esophageal, treatment] LD 400 mg (=6mg/kg) q 24h 1일 → MD 100-200 mg (=1.5-3mg/kg) q 24h\n[Esophageal, chronic suppression/Oropharyngeal] 50-100mg q 24h"}, {min: 0, max: 49, dose: "100mg q 24h"}], IHD: "[Candidemia/CNS infection] LD 800 mg (=12mg/kg) q 24h 1일 → MD 400 mg (=6mg/kg) 주 3회 투석 후 투여\nif fluconazole-susceptible Candida glabrata isolated, transition to 800 mg (or 12 mg/kg) 주 3회 투석 후 투여\n[Esophageal, treatment] LD 400 mg (=6mg/kg) q 24h 1일 → MD 200-400 mg (=3-6mg/kg) 주 3회 투석 후 투여\n[Esophageal, chronic suppression/Oropharyngeal] 100-200mg 주 3회 투석 후 투여", CVVHDF: "[Candidemia/CNS infection] LD 1200 mg q 24h 1일 → MD 600 mg q 12h\nif fluconazole-susceptible Candida glabrata isolated, transition to 600 mg q 12h 투여\n[Esophageal, treatment] LD 800 mg q 24h 1일 → MD 400 mg q 24h\n[Esophageal, chronic suppression/Oropharyngeal] 200-400mg q 24h", cmt: "1. Weight-based dosing (<50kg or >90kg)\n2. 그 외 다양한 적응증별 용량은 uptodate 참고" },
+    fluconazole_po: { name: "Fluconazole PO", ranges: [{min: 50, dose: "[Candidemia/CNS infection] LD 800 mg (=12mg/kg) q 24h 1일 → MD 400 mg (=6mg/kg) q 24h\nif fluconazole-susceptible Candida glabrata isolated, transition to 800 mg (or 12 mg/kg) q 24h\n[Esophageal, treatment] LD 400 mg (=6mg/kg) q 24h 1일 → MD 200-400 mg (=3-6mg/kg) q 24h\n[Esophageal, chronic suppression/Oropharyngeal] 100-200mg q 24h"}, {min: 0, max: 50, dose: "[Candidemia/CNS infection] LD 800 mg (=12mg/kg) q 24h 1일 → MD 200 mg (=3mg/kg) q 24h\nif fluconazole-susceptible Candida glabrata isolated, transition to 400 mg (or 6 mg/kg) q 24h\n[Esophageal, treatment] LD 400 mg (=6mg/kg) q 24h 1일 → MD 100-200 mg (=1.5-3mg/kg) q 24h\n[Esophageal, chronic suppression/Oropharyngeal] 50-100mg q 24h"}, {min: 0, max: 49, dose: "100mg q 24h"}], IHD: "[Candidemia/CNS infection] LD 800 mg (=12mg/kg) q 24h 1일 → MD 400 mg (=6mg/kg) 주 3회 투석 후 투여\nif fluconazole-susceptible Candida glabrata isolated, transition to 800 mg (or 12 mg/kg) 주 3회 투석 후 투여\n[Esophageal, treatment] LD 400 mg (=6mg/kg) q 24h 1일 → MD 200-400 mg (=3-6mg/kg) 주 3회 투석 후 투여\n[Esophageal, chronic suppression/Oropharyngeal] 100-200mg 주 3회 투석 후 투여", CVVHDF: "[Candidemia/CNS infection] LD 1200 mg q 24h 1일 → MD 600 mg q 12h\nif fluconazole-susceptible Candida glabrata isolated, transition to 600 mg q 12h 투여\n[Esophageal, treatment] LD 800 mg q 24h 1일 → MD 400 mg q 24h\n[Esophageal, chronic suppression/Oropharyngeal] 200-400mg q 24h", cmt: "1. Weight-based dosing (<50kg or >90kg)\n2. 그 외 다양한 적응증별 용량은 uptodate 참고" },
+    ganciclovir: { name: "Ganciclovir", ranges: [{min:70, dose:"[CMV treatment/Preemptive induction (혈액암)] 5mg/kg q 12h \n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 5mg/kg IV q 24h"}, {min:50, max:70, dose:"[CMV treatment/Preemptive induction (혈액암)] 2.5mg/kg q 12h\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 2.5mg/kg IV q 24h"}, {min:25, max:50, dose:"[CMV treatment/Preemptive induction (혈액암)] 2.5mg/kg q 24h\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 1.25mg/kg IV q 24h"}, {min:10, max:25, dose:"[CMV treatment/Preemptive induction (혈액암)] 1.25mg/kg q 24h\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 0.625mg/kg IV q 24h"}, {min:0, max:10, dose:"[CMV treatment/Preemptive induction (혈액암)] 1.25mg/kg 주 3회\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 0.625mg/kg IV 주 3회"}], IHD: "[CMV treatment/Preemptive induction (혈액암)] 1.25mg/kg 주 3회 투석 후 투여\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 0.625mg/kg IV 주 3회 투석 후 투여", CVVHDF: "[CMV treatment/Preemptive induction (혈액암)] 2.5mg/kg q 24h\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 1.25mg/kg IV q 24h", cmt: "1. Preemptive: CMV PCR + → 5 mg/kg twice daily until viral load undetectable (혈액암의 경우 최소 1~2주 induction 후 maintenance로 감량)\n2. Prophylaxis: 고위험군 (CMV Donor +/Recipient -)\n3. 충분한 수분 보충 필요, IV hydration 추천함\n4. [CMV treatment/Preemptive Induction] 투여기간: 최소 2주 이상 추천" },
+    letermovir: { name: "Letermovir", ranges: [{min: 50, dose: "480mg qd (Cyclosporin 병용 시 240mg qd)"}, {max:50, dose:"IV vehicle 축적 주의, 신기능 모니터링 권고."}], cmt: "1. IV→PO 1:1 용량 변경\n2. HSCT 받은 성인 CMV IgG[R+] 환자에서 CMV 예방목적으로만 사용" },
+    oseltamivir: { name: "Oseltamivir PO", ranges: [{min:60, dose:"[Treatment] 75mg q 12h 5-10일"}, {min:30, max:60, dose:"[Treatment] 75mg 1회 → 30mg q 12h (Ref. uptodate)"}, {min:10, max:30, dose:"[Treatment] 30mg q 24h (Ref. uptodate)"}, {min:0, max:10, dose: "[Treatment] 30mg 격일 (Ref. uptodate)"}], IHD: "[Treatment] 30mg 즉시 투여 → 최소 5일동안 30mg 투석 후 투여 (주 3회 투석 기준) (Ref. uptodate)", CVVHDF: "[Treatment] 75mg q 24h", cmt: "" },
+    peramivir: { name: "Peramivir IV", ranges: [{min:50, dose:"[경증] 600mg q 24h 1회\n[중증] 600mg q 24h 최대 5일 (Ref. uptodate)"}, {min:30, max:50, dose:"[경증] 200mg q 24h 1회\n[중증] 150mg q 24h 최대 5일 (Ref. uptodate)"}, {min:10, max:30, dose:"[경증] 100mg q 24h 1회\n[중증] 100mg q 24h 최대 5일 (Ref. uptodate)"}, {max:10, dose:"[경증] 100mg q 24h 1회\n[중증] D1 100mg q 24h → D2- 15mg q 24h (Ref. uptodate)"}], IHD: "[경증] 100mg q 24h 1회 투석 날 투석 후 투여\n[중증] D1 100mg q 24h → D2- 100mg q 24h 투석 2시간 후 투여 (Ref. uptodate)", cmt: "" },
+    posaconazole: { name: "Posaconazole", ranges: [{min: 0, dose: "[Prophylaxis] 300mg q 12h for 2 doses → 300mg q 24h (Ref. uptodate)"}], IHD: "[Prophylaxis] 300mg q 12h for 2 doses → 300mg q 24h (Ref. uptodate)", cmt: "Syrup은 식사와 함께" },
+    valacyclovir_po: { name: "Valacyclovir PO", ranges: [{min: 50, dose: "[HSV] 1g q 12h (Ref. uptodate)\n[HSV meningitis/Zoster] 1g q 8h (Ref. uptodate)"}, {min: 30, max: 50, dose: "[HSV] 1g q 12h (Ref. uptodate)\n[HSV meningitis/Zoster] 1g q 12h (Ref. uptodate)"}, {min: 10, max: 30, dose: "[HSV] 1g q 24h (Ref. uptodate)\n[HSV meningitis/Zoster] 1g q 24h (Ref. uptodate)"}, {min: 0, max: 10, dose: "[HSV] 500mg q 24h (Ref. uptodate)\n[HSV meningitis/Zoster] 500mg q 24h (Ref. uptodate)"}], IHD: "[HSV] 500mg q 24h (Ref. uptodate)\n[HSV meningitis/Zoster] 500mg q 24h 투석 후 투여 (Ref. uptodate)", CVVHDF: "500-1000mg q 12-24h (Ref. uptodate)", cmt: "1. Bell palsy, new onset: 1g q 8h for 7 days in combination with corticosteroids (Ref. uptodate)" },
+    valganciclovir: { name: "Valganciclovir PO", ranges: [{min: 60, dose: "[Treatment induction/Preemptive] 900mg q 12h (Ref. uptodate)\n[Treatment maintenance/Prophylaxis] 900mg q 24h (Ref. uptodate)"}, {min: 40, max: 60, dose: "[Treatment induction/Preemptive] 450mg q 12h (Ref. uptodate)\n[Treatment maintenance/Prophylaxis] 450mg q 24h (Ref. uptodate)"}, {min: 25, max: 40, dose: "[Treatment induction/Preemptive] 450mg q 24h (Ref. uptodate)\n[Maintenance/Prophylaxis] 450mg q 48h (Ref. uptodate)"}, {min: 10, max: 25, dose: "[Treatment induction/Preemptive] 450mg 격일 (Ref. uptodate)\n[Treatment maintenance/Prophylaxis] 450mg 주 2회 (Ref. uptodate)"}, {max: 10, dose: "[Treatment induction/Preemptive] Oral solution 200mg 주 3회 투석 후 투여 or Tablet 450mg 주 3회 투석 후 투여 (Ref. uptodate)\n[Treatment maintenance/Prophylaxis] Oral solution 100mg 주 3회 투석 후 투여 or Tablet 450mg 주 2회 (Ref. uptodate)"}], IHD: "[Treatment induction/Preemptive] Oral solution 200mg 주 3회 투석 후 투여 or Tablet 450mg 주 3회 투석 후 투여 (Ref. uptodate)\n[Treatment maintenance/Prophylaxis] Oral solution 100mg 주 3회 투석 후 투여 or Tablet 450mg 주 2회 (Ref. uptodate)", cmt: "1. Preemptive: CMV PCR + → 900 mg twice daily until viral load undetectable\n2. Prophylaxis: 고위험군 (CMV Donor +/Recipient -)" },
+    voriconazole_iv: { name: "Voriconazole IV", ranges: [{min: 50, dose: "LD 6mg/kg q 12h (2회), MD 3-4mg/kg q 12h"}, {min: 0, max: 50, dose: "PO 전환 권고 (Cyclodextrin 축적 위험)"}], IHD: "PO 전환 권고 (Cyclodextrin 축적 위험)", CVVHDF: "PO 전환 권고 (Cyclodextrin 축적 위험)", cmt: "1. eGFR < 50 시 IV 제형 부형제 독성 주의\n2. 혈중농도 모니터링 필요 (주 1회) Target trough: 1.0-5.5mcg/mL\n3. 약물상호작용 주의 필요" },
+    voriconazole_po: { name: "Voriconazole PO (Ref. uptodate)", ranges: [{min: 0, dose: "200-300mg q 12h or 3-4mg/kg q 12h"}], IHD: "200-300mg q 12h or 3-4mg/kg q 12h", CVVHDF: "200-300mg q 12h or 3-4mg/kg q 12h", cmt: "1. eGFR < 50 시 IV 제형 부형제 독성 주의\n2. 혈중농도 모니터링 필요 (주 1회) Target trough: 1.0-5.5mcg/mL\n3. 약물상호작용 주의 필요" }
+};
+
+function run() {
+    const gender = document.getElementById('gender').value;
+    const hInput = document.getElementById('height').value;
+    const wInput = document.getElementById('weight').value;
+    const egfrInput = document.getElementById('egfr').value;
+    const dialysis = document.getElementById('dialysis').value;
+    
+    const drugInputName = document.getElementById('drug-input').value; 
+    const drugKey = Object.keys(DB).find(key => DB[key].name === drugInputName);
+    const drug = DB[drugKey];
+
+    if (!drug) { 
+        alert("목록에서 정확한 약물 이름을 선택하거나 입력해주세요."); 
+        return; 
+    }
+
+    if (!wInput || isNaN(parseFloat(egfrInput))) { 
+        alert("체중과 eGFR 수치를 입력해주세요."); 
+        return; 
+    }
+
+    const w = parseFloat(wInput);
+    const egfr = parseFloat(egfrInput);
+    const hasHeight = hInput.trim() !== ""; 
+    
+    let targetWt = w, wtStr = "실제체중";
+    let bmiTextHTML = "";
+    
+    const actualWtDrugs = ['vancomycin', 'vancomycin_po', 'teicoplanin', 'voriconazole_po', 'fluconazole_iv', 'fluconazole_po', 'linezolid'];
+    const bmi40Drugs = ['acyclovir', 'acyclovir_po', 'ganciclovir'];
+    const fixedDoseDrugs = ['tigecycline'];
+
+    if (hasHeight) {
+        const h = parseFloat(hInput) / 100;
+        const bmi = (w / (h * h)).toFixed(1);
+        const ibw = gender === 'male' ? (h * h * 22) : (h * h * 21);
+        const adjBw = ibw + 0.4 * (w - ibw);
+
+        if (fixedDoseDrugs.includes(drugKey)) { 
+            wtStr = "Fixed Dose"; targetWt = "-"; 
+        } else if (actualWtDrugs.includes(drugKey)) { 
+            targetWt = w; wtStr = "실제체중"; 
+        } else if (bmi40Drugs.includes(drugKey)) {
+            if (bmi >= 40) { targetWt = adjBw; wtStr = "보정체중"; }
+            else { targetWt = ibw; wtStr = "표준체중"; }
+        } else {
+            if (bmi >= 25) { targetWt = adjBw; wtStr = "보정체중"; }
+        }
+        
+        bmiTextHTML = `BMI: <strong>${bmi}</strong> / 적용: <span class="wt-highlight">[${wtStr}]</span>${targetWt !== "-" ? ` (${Math.round(targetWt*10)/10}kg)` : ""}`;
+    } else {
+        if (fixedDoseDrugs.includes(drugKey)) {
+            wtStr = "Fixed Dose"; targetWt = "-"; 
+            bmiTextHTML = `키 미입력 / 적용: <span class="wt-highlight">[${wtStr}]</span>`;
+        } else {
+            targetWt = w; 
+            wtStr = "입력체중 (키 미적용)"; 
+            bmiTextHTML = `<span style="color: #d32f2f; font-size: 11.5px; font-weight: 600;">※ 키가 입력되지 않아 입력된 체중으로 계산합니다. 보정체중 등 정확한 용량 계산이 필요하다면 키를 입력해주세요.</span><br>적용: <span class="wt-highlight">[${wtStr}]</span> (${Math.round(targetWt*10)/10}kg)`;
+        }
+    }
+
+    document.getElementById('bmi-box').innerHTML = `<span class="label-tag tag-bmi">체중 기준</span><br>${bmiTextHTML}`;
+
+    let rec = "";
+    if (dialysis === "IHD") rec = drug.IHD || "데이터 없음";
+    else if (dialysis === "CVVHDF") rec = drug.CVVHDF || "데이터 없음";
+    else {
+        for (const r of drug.ranges) {
+            if (egfr >= r.min && (r.max === undefined || egfr <= r.max)) { rec = r.dose; break; }
+        }
+    }
+
+    let displayRec = rec;
+
+    if (drugKey === 'sulfamethoxazole_trimethoprim' && targetWt !== "-") {
+        const calcDay = (mg) => ((mg * targetWt) / 80).toFixed(1);
+
+        displayRec = `
+        <div style="margin-top: 0px; border-top: 1px solid #e0e6ed; border-radius: 6px; overflow: hidden;">
+            <table style="width: 100%; font-size: 11.5px; border-collapse: collapse; text-align: left;">
+                    <th style="padding: 2px 5px; color: #546e7a;">적응증별 상용량</th>
+                    <th style="padding: 2px 5px; color: #546e7a; text-align: right;">Daily dose</th>
+                </tr>
+                <tr>
+                    <td style="padding: 2px 5px;">• [PCP 치료] 15~20mg/kg/day (TMP 기준) q 6-8h</td>
+                    <td style="padding: 2px 5px; text-align: right; color: #d32f2f; font-weight: bold;">약 ${calcDay(15)} ~ ${calcDay(20)} amp/정</td>
+                </tr>
+                <tr>
+                    <td style="padding: 2px 5px;">• [PCP 예방] 1 tab/amp q 24h</td>
+                    <td style="padding: 2px 5px; text-align: right; color: #d32f2f; font-weight: bold;">1 amp/정</td>
+                </tr>
+                <tr>
+                    <td style="padding: 2px 5px;">• [S.maltophilia] 8~12mg/kg/day (TMP 기준) q 8-12h</td>
+                    <td style="padding: 2px 5px; text-align: right; color: #d32f2f; font-weight: bold;">약 ${calcDay(8)} ~ ${calcDay(12)} amp/정</td>
+                </tr>
+                <tr>
+                    <td style="padding: 2px 5px;">• [UTI] 2 tab/amp q 12h</td>
+                    <td style="padding: 2px 5px; text-align: right; color: #d32f2f; font-weight: bold;">2.0 amp/정</td>
+                </tr>
+            </table>
+            <div style="font-size: 11px; color: #78909c; background: #f9f9f9; border-top: 1px dotted #e2e8f0; text-align: center; padding: 1px 0; margin-top: -1px; line-height: 1.1; letter-spacing: -0.5px;">
+                * eGFR 15~30: 50% 감량 / eGFR < 15 & iHD: 25~50% 감량 / CVVHDF: renal dosing 필요 없음
+            </div>
+        </div>`;
+    } 
+    else if (targetWt !== "-" && rec.includes("mg/kg")) {
+        displayRec = rec.replace(/([\d.-]+)\s*mg\/kg/g, (match, p1) => {
+           const calculated = p1.split(/[-]/).map(val => {
+               const num = parseFloat(val);
+               return isNaN(num) ? val : Math.round(num * targetWt);
+           }).join('-');
+           return `${match} <span style="color: #336699; font-weight: 700;">(= ${calculated}mg)</span>`;
+        });
+    }
+
+    document.getElementById('dose-box').innerHTML = `<span class="label-tag tag-dose">RECOMMENDED DOSE</span><br><strong>${drug.name}</strong><br><span style="${drugKey === 'sulfamethoxazole_trimethoprim' ? '' : 'color:#d32f2f;'}">${displayRec || "확인 불가"}</span>`;
+    document.getElementById('comment-box').innerHTML = `<span class="label-tag tag-cmt">CLINICAL COMMENTS</span><br>${drug.cmt || "특이사항 없음"}`;
+    document.getElementById('result-area').style.display = "block";
+}
+
+function resetAll() {
+    document.querySelectorAll('input').forEach(i => i.value = '');
+    document.getElementById('result-area').style.display = 'none';
+}
+</script>
+<script>
+    // 브라우저가 서비스 워커를 지원하는지 확인합니다.
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(registration => {
+                    console.log('ServiceWorker 등록 성공:', registration.scope);
+                })
+                .catch(error => {
+                    console.log('ServiceWorker 등록 실패:', error);
+                });
+        });
+    }
+</script>
+</body>
+</html>
+</body>
+</html>
