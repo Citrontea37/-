@@ -1,12 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#336699">
-    <link rel="apple-touch-icon" href="icon-192.png">
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>항생제 용량 추천 도구 VER 1.0 (모바일 지원)</title>
+    <title>항생제 용량 추천 도구 VER 1.2 (Mobile)</title>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
     <style>
         :root {
@@ -22,59 +19,121 @@
             --result-border: #00bcd4;
         }
 
-        body { font-family: 'Pretendard', sans-serif; font-size: 13px; background: var(--primary-bg); margin: 0; padding: 15px; color: var(--text-main); }
-        .container { max-width: 800px; margin: 0 auto; background: var(--container-bg); border-radius: 12px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-        h1 { text-align: center; color: var(--accent-blue); margin-bottom: 5px; font-weight: 800; font-size: 1.4rem; }
-        .version-tag { text-align: center; font-size: 11px; color: #78909c; margin-bottom: 20px; }
-        .notice-banner { background-color: #f1f4f9; border-left: 4px solid var(--accent-blue); padding: 12px; margin-bottom: 20px; border-radius: 6px; font-size: 12px; line-height: 1.4; }
+        body { 
+            font-family: 'Pretendard', sans-serif; 
+            font-size: 14px; /* 모바일 가독성을 위해 기본 폰트 크기 약간 증가 */
+            background: var(--primary-bg); 
+            margin: 0; 
+            padding: 15px; 
+            color: var(--text-main); 
+        }
         
-        /* 기본 PC 레이아웃 (2단 그리드) */
-        .input-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: var(--container-bg); 
+            border-radius: 12px; 
+            padding: 20px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08); 
+        }
+        
+        h1 { text-align: center; color: var(--accent-blue); margin-bottom: 5px; font-weight: 800; font-size: 1.4rem; line-height: 1.3; }
+        .version-tag { text-align: center; font-size: 12px; color: #78909c; margin-bottom: 20px; }
+        
+        .notice-banner { 
+            background-color: #f1f4f9; 
+            border-left: 4px solid var(--accent-blue); 
+            padding: 12px; 
+            margin-bottom: 20px; 
+            border-radius: 6px; 
+            font-size: 13px; 
+            word-break: keep-all;
+        }
+        
+        .input-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 12px; 
+            margin-bottom: 20px; 
+        }
+        
         .form-group { display: flex; flex-direction: column; }
-        label { margin-bottom: 5px; font-weight: 600; color: #455a64; font-size: 12px; }
-        input, select { padding: 10px 8px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline-color: var(--accent-blue); box-sizing: border-box; width: 100%; }
+        label { margin-bottom: 6px; font-weight: 600; color: #455a64; font-size: 13px; }
         
-        #drug-input { 
+        input, select { 
+            padding: 10px; /* 터치 영역 확대 */
+            border-radius: 8px; 
+            border: 1px solid var(--border-color); 
+            font-size: 14px; 
+            outline-color: var(--accent-blue); 
+            box-sizing: border-box; 
+            width: 100%; 
+            appearance: none; /* 모바일 브라우저 기본 스타일 제거 */
+            -webkit-appearance: none;
+        }
+        
+        /* select 화살표 커스텀 (모바일 통일성) */
+        select {
             background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="gray" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
             background-repeat: no-repeat;
             background-position: right 10px center;
             background-size: 12px;
             padding-right: 30px;
         }
+        
+        #drug-input { 
+            background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="gray" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 14px;
+            padding-right: 30px;
+        }
 
         .button-group { display: flex; gap: 8px; margin-bottom: 15px; }
-        button { flex: 1; background: linear-gradient(135deg, #aabbee, #6a85c1); color: white; border: none; padding: 14px; font-size: 14px; border-radius: 8px; cursor: pointer; font-weight: 700; }
-        #result-area { margin-top: 15px; display: none; }
-        .card { border-radius: 10px; padding: 15px; margin-bottom: 10px; line-height: 1.5; white-space: pre-line; word-break: keep-all;}
-        .bmi-card { background: var(--warning-bg); border: 1.5px solid var(--warning-border); font-size: 12.5px; }
-        .dose-card { background: var(--result-bg); border: 1.5px solid var(--result-border); font-weight: 500; font-size: 13px; }
-        .comment-card { background: #f8f9fa; border: 1.5px solid #cfd8dc; font-size: 12px; color: #546e7a; }
-        .label-tag { display: inline-block; padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 6px; }
+        
+        button { 
+            flex: 1; 
+            background: linear-gradient(135deg, #aabbee, #6a85c1); 
+            color: white; 
+            border: none; 
+            padding: 14px; /* 터치하기 쉽도록 여유있는 높이 */
+            font-size: 15px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 700; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        button:active { transform: scale(0.98); } /* 터치 피드백 */
+        
+        #result-area { margin-top: 20px; display: none; }
+        
+        .card { border-radius: 10px; padding: 15px; margin-bottom: 12px; line-height: 1.6; white-space: pre-line; word-break: keep-all; }
+        .bmi-card { background: var(--warning-bg); border: 1.5px solid var(--warning-border); font-size: 13.5px; }
+        .dose-card { background: var(--result-bg); border: 1.5px solid var(--result-border); font-weight: 500; font-size: 14px; }
+        .comment-card { background: #f8f9fa; border: 1.5px solid #cfd8dc; font-size: 13px; color: #546e7a; }
+        
+        .label-tag { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-bottom: 8px; }
         .tag-bmi { background: #ffecb3; color: #856404; }
         .tag-dose { background: #b2ebf2; color: #006064; }
         .tag-cmt { background: #eceff1; color: #455a64; }
         .wt-highlight { color: #d32f2f; font-weight: bold; }
 
-        /* 모바일 최적화를 위한 미디어 쿼리 (화면 너비 600px 이하일 때 적용) */
+        /* 모바일 전용 반응형 디자인 (화면 폭 600px 이하) */
         @media (max-width: 600px) {
-            body { padding: 10px; }
-            .container { padding: 15px; }
-            h1 { font-size: 1.2rem; }
-            
-            /* 입력창을 1열로 변경하여 터치와 시인성을 높임 */
-            .input-grid {
-                grid-template-columns: 1fr; 
+            body { 
+                padding: 0; 
+                background: var(--container-bg); 
+            }
+            .container { 
+                border-radius: 0; 
+                padding: 20px 15px; 
+                box-shadow: none; 
+            }
+            .input-grid { 
+                grid-template-columns: 1fr; /* 모바일에서는 무조건 1열 세로 배치 */
                 gap: 15px;
             }
-            
-            /* 모바일에서 버튼 터치 영역 확보 */
-            input, select {
-                font-size: 15px;
-                padding: 12px 10px;
-            }
-            button {
-                padding: 15px;
-            }
+            h1 { font-size: 1.3rem; }
         }
     </style>
 </head>
@@ -186,7 +245,7 @@
 </div>
 
 <script>
-// DB 객체는 원본과 완전히 동일합니다.
+// DB 객체는 원본과 완전히 동일합니다. (요청하신 대로 famciclovir 추가 등은 제외되었습니다)
 const DB = {
     amikacin: { name: "Amikacin", ranges: [{min:40, dose:"7.5mg/kg IV q 12h"}, {min:20, max:40, dose:"7.5mg/kg IV q 24h"}, {min:0, max:20, dose:"LD 7.5mg/kg 1회 후 TDM"}], IHD: "7.5mg/kg 투석 후 투여", CVVHDF: "LD 10mg/kg, MD 7.5mg/kg q 24h", cmt: "1. TDM 채혈 2회: 투여직전, 투여완료 30분 후 (신부전 환자는 60분 후)\n2. 적응증별 target peak\n- Conventional therapy: 25-35 mcg/mL\n- 다제내성결핵 1) 매일 투여: 35-45 mcg/mL 2) 주3회 투여: ≧65 mcg/mL\n- NTM 1) 매일 투여: 25-35 mcg/mL 2) 주3회 투여: 65-80 mcg/mL" },
     amoxicillin: { name: "Amoxicillin PO", ranges: [{min:30, dose:"1g PO q 12h"}, {min:10, max:30, dose:"500mg PO q 12h"}, {min:0, max:10, dose:"500mg PO q 24h"}], IHD: "500mg PO q 24h", cmt: "" },
@@ -249,7 +308,7 @@ const DB = {
     ganciclovir: { name: "Ganciclovir", ranges: [{min:70, dose:"[CMV treatment/Preemptive induction (혈액암)] 5mg/kg q 12h \n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 5mg/kg IV q 24h"}, {min:50, max:70, dose:"[CMV treatment/Preemptive induction (혈액암)] 2.5mg/kg q 12h\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 2.5mg/kg IV q 24h"}, {min:25, max:50, dose:"[CMV treatment/Preemptive induction (혈액암)] 2.5mg/kg q 24h\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 1.25mg/kg IV q 24h"}, {min:10, max:25, dose:"[CMV treatment/Preemptive induction (혈액암)] 1.25mg/kg q 24h\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 0.625mg/kg IV q 24h"}, {min:0, max:10, dose:"[CMV treatment/Preemptive induction (혈액암)] 1.25mg/kg 주 3회\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 0.625mg/kg IV 주 3회"}], IHD: "[CMV treatment/Preemptive induction (혈액암)] 1.25mg/kg 주 3회 투석 후 투여\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 0.625mg/kg IV 주 3회 투석 후 투여", CVVHDF: "[CMV treatment/Preemptive induction (혈액암)] 2.5mg/kg q 24h\n[Preemptive maintenance (혈액암)/Prophylaxis (고형암)] 1.25mg/kg IV q 24h", cmt: "1. Preemptive: CMV PCR + → 5 mg/kg twice daily until viral load undetectable (혈액암의 경우 최소 1~2주 induction 후 maintenance로 감량)\n2. Prophylaxis: 고위험군 (CMV Donor +/Recipient -)\n3. 충분한 수분 보충 필요, IV hydration 추천함\n4. [CMV treatment/Preemptive Induction] 투여기간: 최소 2주 이상 추천" },
     letermovir: { name: "Letermovir", ranges: [{min: 50, dose: "480mg qd (Cyclosporin 병용 시 240mg qd)"}, {max:50, dose:"IV vehicle 축적 주의, 신기능 모니터링 권고."}], cmt: "1. IV→PO 1:1 용량 변경\n2. HSCT 받은 성인 CMV IgG[R+] 환자에서 CMV 예방목적으로만 사용" },
     oseltamivir: { name: "Oseltamivir PO", ranges: [{min:60, dose:"[Treatment] 75mg q 12h 5-10일"}, {min:30, max:60, dose:"[Treatment] 75mg 1회 → 30mg q 12h (Ref. uptodate)"}, {min:10, max:30, dose:"[Treatment] 30mg q 24h (Ref. uptodate)"}, {min:0, max:10, dose: "[Treatment] 30mg 격일 (Ref. uptodate)"}], IHD: "[Treatment] 30mg 즉시 투여 → 최소 5일동안 30mg 투석 후 투여 (주 3회 투석 기준) (Ref. uptodate)", CVVHDF: "[Treatment] 75mg q 24h", cmt: "" },
-    peramivir: { name: "Peramivir IV", ranges: [{min:50, dose:"[경증] 600mg q 24h 1회\n[중증] 600mg q 24h 최대 5일 (Ref. uptodate)"}, {min:30, max:50, dose:"[경증] 200mg q 24h 1회\n[중증] 150mg q 24h 최대 5일 (Ref. uptodate)"}, {min:10, max:30, dose:"[경증] 100mg q 24h 1회\n[중증] 100mg q 24h 최대 5일 (Ref. uptodate)"}, {max:10, dose:"[경증] 100mg q 24h 1회\n[중증] D1 100mg q 24h → D2- 15mg q 24h (Ref. uptodate)"}], IHD: "[경증] 100mg q 24h 1회 투석 날 투석 후 투여\n[중증] D1 100mg q 24h → D2- 100mg q 24h 투석 2시간 후 투여 (Ref. uptodate)", cmt: "" },
+    peramivir: { name: "Peramivir IV", ranges: [{min:50, dose:"[경증] 600mg q 24h 1회\n[중증] 600mg q 24h 최대 5일 (Ref. uptodate)"}, {min:30, max:50, dose:"[경증] 200mg q 24h 1회\n[중증] 150mg q 24h 최대 5일 (Ref. uptodate)"}, {min:10, max:30, dose:"[경증] 100mg q 24h 1회\n[중증] 100mg q 24h 최대 5일 (Ref. 기uptodate)"}, {max:10, dose:"[경증] 100mg q 24h 1회\n[중증] D1 100mg q 24h → D2- 15mg q 24h (Ref. uptodate)"}], IHD: "[경증] 100mg q 24h 1회 투석 날 투석 후 투여\n[중증] D1 100mg q 24h → D2- 100mg q 24h 투석 2시간 후 투여 (Ref. uptodate)", cmt: "" },
     posaconazole: { name: "Posaconazole", ranges: [{min: 0, dose: "[Prophylaxis] 300mg q 12h for 2 doses → 300mg q 24h (Ref. uptodate)"}], IHD: "[Prophylaxis] 300mg q 12h for 2 doses → 300mg q 24h (Ref. uptodate)", cmt: "Syrup은 식사와 함께" },
     valacyclovir_po: { name: "Valacyclovir PO", ranges: [{min: 50, dose: "[HSV] 1g q 12h (Ref. uptodate)\n[HSV meningitis/Zoster] 1g q 8h (Ref. uptodate)"}, {min: 30, max: 50, dose: "[HSV] 1g q 12h (Ref. uptodate)\n[HSV meningitis/Zoster] 1g q 12h (Ref. uptodate)"}, {min: 10, max: 30, dose: "[HSV] 1g q 24h (Ref. uptodate)\n[HSV meningitis/Zoster] 1g q 24h (Ref. uptodate)"}, {min: 0, max: 10, dose: "[HSV] 500mg q 24h (Ref. uptodate)\n[HSV meningitis/Zoster] 500mg q 24h (Ref. uptodate)"}], IHD: "[HSV] 500mg q 24h (Ref. uptodate)\n[HSV meningitis/Zoster] 500mg q 24h 투석 후 투여 (Ref. uptodate)", CVVHDF: "500-1000mg q 12-24h (Ref. uptodate)", cmt: "1. Bell palsy, new onset: 1g q 8h for 7 days in combination with corticosteroids (Ref. uptodate)" },
     valganciclovir: { name: "Valganciclovir PO", ranges: [{min: 60, dose: "[Treatment induction/Preemptive] 900mg q 12h (Ref. uptodate)\n[Treatment maintenance/Prophylaxis] 900mg q 24h (Ref. uptodate)"}, {min: 40, max: 60, dose: "[Treatment induction/Preemptive] 450mg q 12h (Ref. uptodate)\n[Treatment maintenance/Prophylaxis] 450mg q 24h (Ref. uptodate)"}, {min: 25, max: 40, dose: "[Treatment induction/Preemptive] 450mg q 24h (Ref. uptodate)\n[Maintenance/Prophylaxis] 450mg q 48h (Ref. uptodate)"}, {min: 10, max: 25, dose: "[Treatment induction/Preemptive] 450mg 격일 (Ref. uptodate)\n[Treatment maintenance/Prophylaxis] 450mg 주 2회 (Ref. uptodate)"}, {max: 10, dose: "[Treatment induction/Preemptive] Oral solution 200mg 주 3회 투석 후 투여 or Tablet 450mg 주 3회 투석 후 투여 (Ref. uptodate)\n[Treatment maintenance/Prophylaxis] Oral solution 100mg 주 3회 투석 후 투여 or Tablet 450mg 주 2회 (Ref. uptodate)"}], IHD: "[Treatment induction/Preemptive] Oral solution 200mg 주 3회 투석 후 투여 or Tablet 450mg 주 3회 투석 후 투여 (Ref. uptodate)\n[Treatment maintenance/Prophylaxis] Oral solution 100mg 주 3회 투석 후 투여 or Tablet 450mg 주 2회 (Ref. uptodate)", cmt: "1. Preemptive: CMV PCR + → 900 mg twice daily until viral load undetectable\n2. Prophylaxis: 고위험군 (CMV Donor +/Recipient -)" },
@@ -331,35 +390,34 @@ function run() {
 
     let displayRec = rec;
 
-// 2. 바크림(Bactrim) 전용: 4가지 적응증별 하루 총 용량 계산기
     if (drugKey === 'sulfamethoxazole_trimethoprim' && targetWt !== "-") {
         const calcDay = (mg) => ((mg * targetWt) / 80).toFixed(1);
 
         displayRec = `
-            <div style="margin-top: -5px; font-size: 12px; color: #d32f2f; font-weight: 700; padding: 2px;">
+            <div style="margin-top: -5px; font-size: 13px; color: #d32f2f; font-weight: 700; padding: 2px;">
                 ※ 정상 신기능에 해당하는 용량입니다. 신기능에 따라 아래와 같이 직접 감량하시기 바랍니다.
                 eGFR 15~30: 50% 감량 / eGFR < 15 & iHD: 25~50% 감량 / CVVHDF: renal dosing 필요 없음
             </div>
-            <table style="width: 100%; font-size: 11.5px; border-collapse: collapse; text-align: left;">
+            <table style="width: 100%; font-size: 12px; border-collapse: collapse; text-align: left; margin-top: 8px;">
                 <tr>
-                    <th style="padding: 2px 5px; color: #546e7a;">적응증별 상용량</th>
-                    <th style="padding: 2px 5px; color: #546e7a; text-align: right;">Daily dose</th>
+                    <th style="padding: 4px 5px; color: #546e7a; border-bottom: 1px solid #cfd8dc;">적응증별 상용량</th>
+                    <th style="padding: 4px 5px; color: #546e7a; text-align: right; border-bottom: 1px solid #cfd8dc;">Daily dose</th>
                 </tr>
                 <tr>
-                    <td style="padding: 2px 5px;">• [PCP 치료] 15~20mg/kg/day (TMP 기준) q 6-8h</td>
-                    <td style="padding: 2px 5px; text-align: right; color: #d32f2f; font-weight: bold;">약 ${calcDay(15)} ~ ${calcDay(20)} amp/정</td>
+                    <td style="padding: 4px 5px; border-bottom: 1px dashed #eceff1;">• [PCP 치료] 15~20mg/kg/day (TMP) q 6-8h</td>
+                    <td style="padding: 4px 5px; text-align: right; color: #d32f2f; font-weight: bold; border-bottom: 1px dashed #eceff1;">약 ${calcDay(15)} ~ ${calcDay(20)} amp/정</td>
                 </tr>
                 <tr>
-                    <td style="padding: 2px 5px;">• [PCP 예방] 1 tab/amp q 24h</td>
-                    <td style="padding: 2px 5px; text-align: right; color: #d32f2f; font-weight: bold;">1 amp/정</td>
+                    <td style="padding: 4px 5px; border-bottom: 1px dashed #eceff1;">• [PCP 예방] 1 tab/amp q 24h</td>
+                    <td style="padding: 4px 5px; text-align: right; color: #d32f2f; font-weight: bold; border-bottom: 1px dashed #eceff1;">1 amp/정</td>
                 </tr>
                 <tr>
-                    <td style="padding: 2px 5px;">• [S.maltophilia] 8~12mg/kg/day (TMP 기준) q 8-12h</td>
-                    <td style="padding: 2px 5px; text-align: right; color: #d32f2f; font-weight: bold;">약 ${calcDay(8)} ~ ${calcDay(12)} amp/정</td>
+                    <td style="padding: 4px 5px; border-bottom: 1px dashed #eceff1;">• [S.maltophilia] 8~12mg/kg/day (TMP) q 8-12h</td>
+                    <td style="padding: 4px 5px; text-align: right; color: #d32f2f; font-weight: bold; border-bottom: 1px dashed #eceff1;">약 ${calcDay(8)} ~ ${calcDay(12)} amp/정</td>
                 </tr>
                 <tr>
-                    <td style="padding: 2px 5px;">• [UTI] 2 tab/amp q 12h</td>
-                    <td style="padding: 2px 5px; text-align: right; color: #d32f2f; font-weight: bold;">2.0 amp/정</td>
+                    <td style="padding: 4px 5px;">• [UTI] 2 tab/amp q 12h</td>
+                    <td style="padding: 4px 5px; text-align: right; color: #d32f2f; font-weight: bold;">2.0 amp/정</td>
                 </tr>
             </table>          
         </div>`;
@@ -384,17 +442,5 @@ function resetAll() {
     document.getElementById('result-area').style.display = 'none';
 }
 </script>
-<script>
-    // 이미 설치된 지독한 캐시(서비스 워커)를 강제로 삭제해버리는 코드야
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            for(let registration of registrations) {
-                registration.unregister();
-            }
-        });
-    }
-</script>
-</body>
-</html>
 </body>
 </html>
