@@ -331,12 +331,17 @@ function run() {
 
     let displayRec = rec;
 
+// 2. 바크림(Bactrim) 전용: 4가지 적응증별 하루 총 용량 계산기
     if (drugKey === 'sulfamethoxazole_trimethoprim' && targetWt !== "-") {
         const calcDay = (mg) => ((mg * targetWt) / 80).toFixed(1);
 
         displayRec = `
-        <div style="margin-top: 0px; border-top: 1px solid #e0e6ed; border-radius: 6px; overflow: hidden;">
+            <div style="margin-top: -5px; font-size: 12px; color: #d32f2f; font-weight: 700; padding: 2px;">
+                ※ 정상 신기능에 해당하는 용량입니다. 신기능에 따라 아래와 같이 직접 감량하시기 바랍니다.
+                eGFR 15~30: 50% 감량 / eGFR < 15 & iHD: 25~50% 감량 / CVVHDF: renal dosing 필요 없음
+            </div>
             <table style="width: 100%; font-size: 11.5px; border-collapse: collapse; text-align: left;">
+                <tr>
                     <th style="padding: 2px 5px; color: #546e7a;">적응증별 상용량</th>
                     <th style="padding: 2px 5px; color: #546e7a; text-align: right;">Daily dose</th>
                 </tr>
@@ -356,12 +361,9 @@ function run() {
                     <td style="padding: 2px 5px;">• [UTI] 2 tab/amp q 12h</td>
                     <td style="padding: 2px 5px; text-align: right; color: #d32f2f; font-weight: bold;">2.0 amp/정</td>
                 </tr>
-            </table>
-            <div style="font-size: 11px; color: #78909c; background: #f9f9f9; border-top: 1px dotted #e2e8f0; text-align: center; padding: 1px 0; margin-top: -1px; line-height: 1.1; letter-spacing: -0.5px;">
-                * eGFR 15~30: 50% 감량 / eGFR < 15 & iHD: 25~50% 감량 / CVVHDF: renal dosing 필요 없음
-            </div>
+            </table>          
         </div>`;
-    } 
+    }
     else if (targetWt !== "-" && rec.includes("mg/kg")) {
         displayRec = rec.replace(/([\d.-]+)\s*mg\/kg/g, (match, p1) => {
            const calculated = p1.split(/[-]/).map(val => {
@@ -372,7 +374,7 @@ function run() {
         });
     }
 
-    document.getElementById('dose-box').innerHTML = `<span class="label-tag tag-dose">RECOMMENDED DOSE</span><br><strong>${drug.name}</strong><br><span style="${drugKey === 'sulfamethoxazole_trimethoprim' ? '' : 'color:#d32f2f;'}">${displayRec || "확인 불가"}</span>`;
+    document.getElementById('dose-box').innerHTML = `<span class="label-tag tag-dose">RECOMMENDED DOSE</span><br><strong>${drug.name}</strong>${drugKey === 'sulfamethoxazole_trimethoprim' ? '' : '<br>'}<span style="${drugKey === 'sulfamethoxazole_trimethoprim' ? '' : 'color:#d32f2f;'}">${displayRec || "확인 불가"}</span>`;
     document.getElementById('comment-box').innerHTML = `<span class="label-tag tag-cmt">CLINICAL COMMENTS</span><br>${drug.cmt || "특이사항 없음"}`;
     document.getElementById('result-area').style.display = "block";
 }
