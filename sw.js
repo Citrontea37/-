@@ -1,4 +1,4 @@
-const CACHE_NAME = 'antibiotic-calc-v1.3';
+const CACHE_NAME = 'antibiotic-calc-v1';
 // 오프라인 상태에서도 캐시에서 불러올 파일 목록입니다.
 const urlsToCache = [
     './',
