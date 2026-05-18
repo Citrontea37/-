@@ -385,16 +385,12 @@ function resetAll() {
 }
 </script>
 <script>
-    // 브라우저가 서비스 워커를 지원하는지 확인합니다.
+    // 이미 설치된 지독한 캐시(서비스 워커)를 강제로 삭제해버리는 코드야
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(registration => {
-                    console.log('ServiceWorker 등록 성공:', registration.scope);
-                })
-                .catch(error => {
-                    console.log('ServiceWorker 등록 실패:', error);
-                });
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(let registration of registrations) {
+                registration.unregister();
+            }
         });
     }
 </script>
